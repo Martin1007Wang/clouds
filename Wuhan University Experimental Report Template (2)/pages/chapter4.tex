@@ -1,0 +1,51 @@
+\chapter{使用Kiali进行流量路由追踪}
+在本实验本实验旨在使用Kiali工具对流量路由进行追踪和监控，将使用Kiali进行流量路由追踪，以探索如何在Kubernetes环境中管理流量路由和版本控制。本实验将使用Istio作为服务网格，部署一个具有两个不同版本的前端服务，并使用Kiali来观察流量路由的变化。
+\section{实验步骤}
+\subsection{创建新的前端部署}
+在开始实验之前，我们首先删除已经存在的前端部署。
+\begin{lstlisting}[language=bash]
+	kubectl delete deploy frontend
+\end{lstlisting}
+使用YAML文件创建一个新的前端部署，重新创建一个前端deploy，名字还是frontend，但是指定了一个版本标签设置为 original，修改后的yaml文件请见提交的代码。
+创建deploy。
+\begin{lstlisting}[language=bash]
+[root@k8scloude1 ~]# kubectl apply -f frontend-original.yaml 
+deployment.apps/frontend created
+#deploy创建成功
+[root@k8scloude1 ~]# kubectl get deploy | grep frontend
+frontend                1/1     1            1           43s
+#pod也正常运行
+[root@k8scloude1 ~]# kubectl get pod | grep frontend
+frontend-ff47c5568-qnzpt                 2/2     Running   0          105s
+\end{lstlisting}
+创建一个DestinationRule，用于定义两个前端服务的版本：原始版本（original）和新版本（v1）。创建frontend-dr.yaml ，在其中指定subsets，分别为orignal和v1，具体代码请见提交的代码文件。我们使用以下命令创建DestinationRule。
+\begin{lstlisting}[language=bash]
+	$ kubectl apply -f frontend-dr.yaml
+\end{lstlisting}
+
+\subsection{更新VirtualService}
+
+接下来，使用以下命令更新VirtualService，并将所有流量路由到原始版本orginal的前端：
+\begin{lstlisting}[language=bash]
+kubectl apply -f frontend-vs.yaml
+\end{lstlisting}
+
+现在，我们准备创建新版本的前端部署。我们使用以下命令创建名为"frontend-v1"的部署：
+
+\begin{lstlisting}[language=bash]
+	$ kubectl apply -f frontend-v1.yaml
+\end{lstlisting}
+
+\subsection{更新流量路由权重}
+
+最后，我们将更新VirtualService中的权重，将30％的流量路由到新版本的前端。我们使用以下命令更新VirtualService：
+
+\begin{lstlisting}[language=bash]
+	$ kubectl apply -f frontend-30.yaml
+\end{lstlisting}
+\section{实验结果}
+我们通过浏览器访问INGRESS\_HOST，可以观察到前端界面的变化。在刷新页面的过程中，我们可以注意到来自新版本前端（v1）的更新标头和原始版本前端的标头之间的变化。
+
+同时，我们可以使用Kiali工具查看服务的拓扑结构和流量路由。在Kiali界面中选择相应的命名空间和服务，我们可以观察到两个前端服务版本的运行状态以及流量的分布情况。
+
+本实验通过使用Kiali工具对流量路由进行追踪和监控，展示了如何在服务网格中管理多个版本的服务，并灵活地进行流量分配和控制。通过使用Istio的DestinationRule和VirtualService功能，我们可以实现流量路由的精细控制，以满足不同的业务需求。

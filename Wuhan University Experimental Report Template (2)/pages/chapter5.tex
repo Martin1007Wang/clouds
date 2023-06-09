@@ -1,0 +1,85 @@
+\chapter{使用Grafana监控故障注入}
+本实验旨在使用Kiali工具对流量路由进行追踪和监控。我们将为推荐服务引入延迟和中止，然后使用Kiali和Grafana来观察流量路由和服务指标的变化。
+
+首先，我们将为推荐服务引入5秒的延迟。我们创建一个名为recommendation-delay.yaml的YAML文件，并将以下内容保存到该文件中：
+
+\begin{lstlisting}[language=bash]
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+name: recommendationservice
+spec:
+hosts:
+- recommendationservice.online-boutique.svc.cluster.local
+http:
+- route:
+- destination:
+host: recommendationservice.online-boutique.svc.cluster.local
+fault:
+delay:
+percentage:
+value: 50
+fixedDelay: 5s
+\end{lstlisting}
+
+然后，我们使用以下命令创建VirtualService：
+
+\begin{lstlisting}[language=bash]
+$ kubectl apply -f recommendation-delay.yaml
+\end{lstlisting}
+
+\subsection{观察推荐服务延迟}
+
+我们可以在浏览器中打开INGRESS\_HOST（http://192.168.110.190/），然后点击其中一个产品，观察推荐服务的结果。在刷新页面的过程中，我们会注意到页面要么立即加载，要么有一个延迟加载的页面，这是由于我们注入了5秒的延迟。
+
+同时，我们可以打开Grafana界面（http://192.168.110.130:31092/），选择Istio服务仪表板，然后在服务列表中选择recommendationservice，查看Client Request Duration图表，观察延迟的变化。
+
+\subsection{引入产品目录服务中止}
+
+接下来，我们将为产品目录服务引入一个中止。我们创建一个名为productcatalogservice-abort.yaml的YAML文件，并将以下内容保存到该文件中：
+
+\begin{lstlisting}[language=bash]
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+name: productcatalogservice
+spec:
+hosts:
+- productcatalogservice.online-boutique.svc.cluster.local
+http:
+- route:
+- destination:
+host: productcatalogservice.online-boutique.svc.cluster.local
+fault:
+abort:
+percentage:
+value: 50
+httpStatus: 500
+\end{lstlisting}
+
+然后，我们使用以下命令创建VirtualService：
+
+\begin{lstlisting}[language=bash]
+$ kubectl apply -f productcatalogservice-abort.yaml
+\end{lstlisting}
+
+\subsection{观察产品目录服务中止}
+
+如果我们刷新几次产品页面，我们应该会得到错误信息，指示产品目录服务中止。我们可以在Grafana界面查看报告的错误，并进一步分析流量路由和服务指标的变化。
+
+\subsection{清理}
+
+最后，我们可以使用以下命令删除创建的VirtualService：
+
+\begin{lstlisting}[language=bash]
+$ kubectl delete virtualservice recommendationservice
+$ kubectl delete virtualservice productcatalogservice
+\end{lstlisting}
+
+\section{实验结果}
+
+通过使用Kiali和Grafana，我们成功地观察到了推荐服务延迟和产品目录服务中止的效果。这些工具提供了对流量路由和服务指标的可视化和监控，有助于我们管理和调试服务网格中的流量分发。
+
+\section{结论}
+
+本实验展示了如何使用Kiali进行流量路由追踪，并结合Grafana进行服务指标的观察。通过注入延迟和中止，我们可以模拟不同的服务行为，并通过Kiali和Grafana来监控和分析流量路由和服务指标的变化。这些工具对于服务网格的管理和故障排除非常有帮助。

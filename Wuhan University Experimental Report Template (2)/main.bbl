@@ -1,0 +1,28 @@
+\begin{thebibliography}{3}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{#1}
+\expandafter\ifx\csname urlstyle\endcsname\relax\else
+  \urlstyle{same}\fi
+\expandafter\ifx\csname href\endcsname\relax
+  \DeclareUrlCommand\doi{\urlstyle{rm}}
+  \def\eprint#1#2{#2}
+\else
+  \def\doi#1{\href{https://doi.org/#1}{\nolinkurl{#1}}}
+  \let\eprint\href
+\fi
+
+\bibitem[张余游(2022)]{weifuwujiagou}
+张余游.
+\newblock 微服务架构:Spring Boot 如何实现微服务？\allowbreak[Z].
+\newblock 2022.
+
+\bibitem[人生的哲理(2022)]{istio}
+人生的哲理.
+\newblock
+  Istio(二)：在Kubernetes(k8s)集群上安装部署istio1.14\allowbreak[Z].
+\newblock 2022.
+
+\bibitem[ist()]{istio-data}
+\allowbreak[Z].
+
+\end{thebibliography}

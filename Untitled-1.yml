@@ -1,0 +1,100 @@
+apiVersion: kubeadm.k8s.io/v1beta2
+bootstrapTokens:
+- groups:
+  - system:bootstrappers:kubeadm:default-node-token
+  token: abcdef.0123456789abcdef
+  ttl: 24h0m0s
+  usages:
+  - signing
+  - authentication
+kind: InitConfiguration
+localAPIEndpoint:
+  advertiseAddress: 192.168.253.142
+  bindPort: 6443
+nodeRegistration:
+  criSocket: /var/run/dockershim.sock
+  name: k8s-master
+  taints:
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/master
+---
+apiServer:
+  timeoutForControlPlane: 4m0s
+apiVersion: kubeadm.k8s.io/v1beta2
+certificatesDir: /etc/kubernetes/pki
+clusterName: kubernetes
+controllerManager: {}
+dns:
+  type: CoreDNS
+etcd:
+  local:
+    dataDir: /var/lib/etcd
+imageRepository: registry.aliyuncs.com/google_containers
+kind: ClusterConfiguration
+kubernetesVersion: v1.19.0
+networking:
+  dnsDomain: cluster.local
+  podsubnet: 192.168.0.0/16
+  serviceSubnet: 10.96.0.0/16
+scheduler: {}
+
+systemctl stop firewalld
+systemctl disable firewalld
+vim /etc/selinux/config
+setenforce 0
+swapoff -a
+vim /etc/fstab
+
+vim /etc/hosts
+192.168.210.128 master
+192.168.210.129 node1
+192.168.210.130 node2
+
+systemctl start ntpd
+systemctl enable ntpd
+vim /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-ip6tables=1
+net.bridge.bridge-nf-call-iptables=1
+net.ipv4.ip_forward=1
+vm.swappiness=0
+
+sysctl --system
+yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+yum -y install docker-ce-20.10.9 docker-ce-cli-20.10.9 containerd.io
+systemctl enable docker
+systemctl start docker
+vim /etc/docker/daemon.json
+{
+    "registry-mirrors": ["https://b9pmyelo.mirror.aliyuncs.com"],
+    "exec-opts": ["native.cgroupdriver=systemd"]
+}
+
+systemctl restart docker
+vim /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name = Kubernetes
+baseurl = https://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64
+enabled = 1
+gpgcheck = 0
+repo_gpgcheck = 0
+gpgkey = https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg https://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg
+
+yum -y install kubelet-1.22.6 kubeadm-1.22.6 kubectl-1.22.6
+systemctl enable kubelet
+
+kubeadm init \
+--apiserver-advertise-address=192.168.210.128 \
+--image-repository registry.aliyuncs.com/google_containers \
+--kubernetes-version v1.22.6 \
+--service-cidr=10.96.0.0/12 \
+--pod-network-cidr=10.244.0.0/16
+
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+kubeadm join 192.168.210.128:6443 --token s19psv.t5r2ms4sos28duxc \
+	--discovery-token-ca-cert-hash sha256:21d529dc1ac201206aa4c0a417982bbd9561ad06e2ee34302205c51a482b7bb4 
+
+  admin-token:
+  eyJhbGciOiJSUzI1NiIsImtpZCI6IlExN194YlV0MGpkbUFiZjBnUmR3NXRnUXptRHdmeHBnWjFmMU1kOXdQalUifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJrdWJlcm5ldGVzLWRhc2hib2FyZCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJhZG1pbi11c2VyLXRva2VuLXNsZDJ0Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQubmFtZSI6ImFkbWluLXVzZXIiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC51aWQiOiJhYjI5ODY0Ni03ZjY3LTRhN2UtYjBiYi00YmQxN2YyNDFiNjIiLCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6a3ViZXJuZXRlcy1kYXNoYm9hcmQ6YWRtaW4tdXNlciJ9.ppcQYjtbeeAs7aPa50xVhsM4e-7dZlyheDlGTDYKn84GcoGoip_qACE8zMKRN3jl1KB8X6R8gDEed5vFer92KbCLP5XGqsUcWH_wkUYsJKumQ67yMY2TWCk7MMdGj-5SJupO-C9WrWftDFobH79si2CeXyLiIDSX5vr3ao_bfoJUtQaBCiS7HaAWqp16umscWMN809g7z48_KzAVv6gw6rSYQn-AXFUZJUvhrwhAmCeQr2G08rAnCoKg-TdntLToTsT_v9IB3CDxUKDlkO2ENJ2g1FciutUwD_clpd1hXiUYdNIgeiIccJDV-I0UTEfsj6aRzYj2oCee4LBRgcWD_g
